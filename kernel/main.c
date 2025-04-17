@@ -21,7 +21,7 @@ main()
     /* --- custom logger --- */
     log_message(INFO,
       "Welcome to AUT MCS Principles of Operating Systems Course. "
-      "This message is from a custom logger implemented by student_number_1 and student_number_2");
+      "This message is from a custom logger implemented by 40213426 and 40212011");
     log_message(WARN,
       "This is a test warning message for the custom logger");
     log_message(ERROR,
