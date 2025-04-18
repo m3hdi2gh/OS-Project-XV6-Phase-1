@@ -13,6 +13,8 @@
 
 #define MAXARGS 10
 
+#define MAX_MSG_LEN 512 // Maximum number of characters in a message
+
 struct cmd {
   int type;
 };
@@ -76,6 +78,65 @@ runcmd(struct cmd *cmd)
     ecmd = (struct execcmd*)cmd;
     if(ecmd->argv[0] == 0)
       exit(1);
+
+    /* implementation of the "!" command */
+    if(strcmp(ecmd->argv[0], "!") == 0){
+      char msg[MAX_MSG_LEN + 1]; /* +1 for terminating NUL */
+      int  len      = 0; /* current length inside msg */
+      int  too_long = 0; /* flag: message exceeded limit */
+      msg[0] = 0;
+
+      /* build message from argv[1..] */
+      for(int i = 1; ecmd->argv[i]; i++){
+        /* insert a single space between words */
+        if(i > 1){
+          if(len < MAX_MSG_LEN) msg[len] = ' ';
+          else                  too_long = 1;
+          if(len < MAX_MSG_LEN) len++;
+        }
+
+        /* copy current word character‑by‑character */
+        for(char *s = ecmd->argv[i]; *s; s++){
+          if(len < MAX_MSG_LEN) msg[len] = *s;
+          else                  too_long = 1;
+          if(len < MAX_MSG_LEN) len++;
+        }
+      }
+      msg[len < MAX_MSG_LEN ? len : MAX_MSG_LEN] = 0; /* NUL‑terminate */
+
+      /* decide what to print */
+      if(too_long){
+        printf("Message too long\n");
+      } else {
+        /* detect substring "os" */
+        int has_os = 0;
+        for(int i = 0; i + 1 < len; i++){
+          if(msg[i] == 'o' && msg[i + 1] == 's'){ has_os = 1; break; }
+        }
+
+        if(has_os){
+          /* print message, highlighting every "os" in blue */
+          for(int i = 0; i < len; ){
+            if(i + 1 < len && msg[i] == 'o' && msg[i + 1] == 's'){
+              printf("\x1b[34m"); /* start blue */
+              write(1, "os", 2);
+              printf("\x1b[0m"); /* reset color */
+              i += 2;
+            } else {
+              write(1, &msg[i], 1);
+              i++;
+            }
+          }
+          printf("\n");
+        } else {
+          printf("%s\n", msg);
+        }
+      }
+
+      exit(0); /* stop before exec() */
+    }
+    /* end of implementation of the "!" command */
+
     exec(ecmd->argv[0], ecmd->argv);
     fprintf(2, "exec %s failed\n", ecmd->argv[0]);
     break;
@@ -134,7 +195,7 @@ runcmd(struct cmd *cmd)
 int
 getcmd(char *buf, int nbuf)
 {
-  write(2, "$ ", 2);
+  write(2, "$mehdi-hooman ", strlen("$mehdi-hooman "));
   memset(buf, 0, nbuf);
   gets(buf, nbuf);
   if(buf[0] == 0) // EOF
@@ -145,7 +206,7 @@ getcmd(char *buf, int nbuf)
 int
 main(void)
 {
-  static char buf[100];
+  static char buf[1030]; // Change to 1030 to avoid buffer overflow (must be > INPUT_BUF_SIZE from console.c)
   int fd;
 
   // Ensure that three file descriptors are open.
